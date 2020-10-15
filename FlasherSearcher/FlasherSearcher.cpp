@@ -2,10 +2,16 @@
 //
 
 #include <iostream>
+#include <re2/re2.h>
 
 int main()
 {
     std::cout << "Hello World!\n";
+
+    re2::RE2 re("(\\w+):(\\d+)");
+    std::cout << re.ok() << std::endl; // compiled; if not, see re.error();
+
+    std::cout << re2::RE2::FullMatch("ruby:1234", re);
 }
 
 // Run program: Ctrl + F5 or Debug > Start Without Debugging menu
