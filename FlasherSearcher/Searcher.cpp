@@ -16,8 +16,6 @@ void Searcher::Search(std::string searchDir)
     tasks.run([&]{SearchInternal(searchDir, tasks);});
 
     tasks.wait();
-
-    std::cout << "DONE!" << std::endl;
 }
 
 void Searcher::SearchInternal(std::string searchDir, concurrency::task_group& tasks)
@@ -57,9 +55,13 @@ void Searcher::SearchInternal(std::string searchDir, concurrency::task_group& ta
 
     ::FindClose(hfind);
 
+    const size_t LINE_BUFFER_SIZE = 1024;
+    char lineBuffer[LINE_BUFFER_SIZE];
+
+    
     for (size_t i = 0; i < files.size(); ++i)
     {
-        const std::string& fullFileName = files[i];
+        const std::string fullFileName = files[i];
         HANDLE hfile = ::CreateFileA(fullFileName.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OVERLAPPED, NULL);
         if (hfile == INVALID_HANDLE_VALUE)
         {
@@ -70,11 +72,29 @@ void Searcher::SearchInternal(std::string searchDir, concurrency::task_group& ta
         DWORD size = ::GetFileSize(hfile, 0);
 
         HANDLE mapping = ::CreateFileMappingA(hfile, NULL, PAGE_READONLY, 0, 0, NULL);
-        char* data = static_cast<char*>(::MapViewOfFile(mapping, FILE_MAP_READ, 0, 0, size));
+        char* dataBuffer = static_cast<char*>(::MapViewOfFile(mapping, FILE_MAP_READ, 0, 0, size));
 
-        if (re2::RE2::PartialMatch(std::string(data, size), _regex))
+        std::string data = std::string(dataBuffer, size);
+        if (re2::RE2::PartialMatch(data, _regex))
         {
-            std::cout << fullFileName << std::endl;
+            // std::cout << fullFileName << std::endl;
+
+            std::istringstream iss(data);
+            std::istream_iterator<std::string> issItr(iss);
+            unsigned int lineNumber = 1;
+            while (iss.getline(lineBuffer, 1024))
+            {
+                int len = iss.gcount();
+                if (lineBuffer[len-2] == '\r' || lineBuffer[len-2] == '\n')
+                    len -= 2;
+
+                const re2::StringPiece sp(lineBuffer, len);
+                if (re2::RE2::PartialMatch(sp, _regex))
+                {
+                    std::cout << fullFileName << ":" << lineNumber << ":" << sp << std::endl;
+                }
+                ++lineNumber;
+            }
         }
 
         ::CloseHandle(mapping);
