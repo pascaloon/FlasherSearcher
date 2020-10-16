@@ -18,9 +18,9 @@ int main()
 {
     // return test1();
 
-    Searcher s("FOpaqueVelocityMeshProcessor");
+    Searcher s("FOpaqueVelocityMeshProcessor", ".*\\.(cpp|c|h|hpp)$");
     // s.Search("D:\\Repository\\godot", ".*\.(cpp|c|h|hpp)$");
-    s.Search("C:\\UE4\\UE_4.25\\Engine", ".*\.(cpp|c|h|hpp)$");
+    s.Search("C:\\UE4\\UE_4.25\\Engine");
 
     return 0;
 }
@@ -57,5 +57,7 @@ int test1()
     //bool r = re2::RE2::FullMatch(data, re);
     bool r = re2::RE2::PartialMatch(data, re);
     std::cout << "is match: " << r << std::endl;
+
+    return 0;
 }
 

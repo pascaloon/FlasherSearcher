@@ -1,77 +1,84 @@
 ﻿#include "pch.h"
 #include "Searcher.h"
 
-Searcher::Searcher(std::string regex)
+
+Searcher::Searcher(std::string regex, std::string fileFilter)
     : _regex(regex)
+    , _fileRegex(fileFilter)
 {
     
 }
 
-void Searcher::Search(std::string searchDir, std::string fileFilter)
+void Searcher::Search(std::string searchDir)
 {
-    re2::RE2 fileRegex(fileFilter);
+    concurrency::task_group tasks;
 
-    int results = 0;
+    tasks.run([&]{SearchInternal(searchDir, tasks);});
+
+    tasks.wait();
+
+    std::cout << "DONE!" << std::endl;
+}
+
+void Searcher::SearchInternal(std::string searchDir, concurrency::task_group& tasks)
+{
+    std::vector<std::string> files;
+    files.reserve(15);
     
-    std::vector<std::string> dirs;
-    dirs.reserve(100);
-    dirs.push_back(searchDir);
-    
-    for (size_t i = 0; i < dirs.size(); ++i)
+    // std::cout << "Searching: " << searchDir << std::endl;
+    std::string dirFilter = searchDir + "\\*";
+
+    WIN32_FIND_DATAA ffd;
+    // Skip "." 
+    HANDLE hfind = FindFirstFileA(dirFilter.c_str(), &ffd);
+    if (hfind == INVALID_HANDLE_VALUE)
     {
-        // vvvvvvvv copy value or crash on resize :) 
-        std::string dir = dirs[i];
-        // std::cout << "Searching: " << dir << std::endl;
-        std::string dirFilter = dir + "\\*";
-
-        WIN32_FIND_DATAA ffd;
-        // Skip "." 
-        HANDLE hfind = FindFirstFileA(dirFilter.c_str(), &ffd);
-        if (hfind == INVALID_HANDLE_VALUE)
-        {
-            std::cerr << "Invalid path!" << std::endl;
-            return;
-        }
-        
-        // Skip ".."
-        FindNextFileA(hfind, &ffd);
-
-
-        while (FindNextFileA(hfind, &ffd))
-        {
-            if (ffd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
-            {
-                dirs.push_back(dir + "\\" + std::string(ffd.cFileName));
-            }
-            else if (re2::RE2::FullMatch(ffd.cFileName, fileRegex))
-            {
-                std::string fullFileName = dir + "\\" + std::string(ffd.cFileName);
-                HANDLE hfile = ::CreateFileA(fullFileName.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OVERLAPPED, NULL);
-                if (hfile == INVALID_HANDLE_VALUE)
-                {
-                    std::cerr << "Couldn't open file!" << std::endl;
-                    continue;
-                }
-
-                DWORD size = ::GetFileSize(hfile, 0);
-
-                HANDLE mapping = ::CreateFileMappingA(hfile, NULL, PAGE_READONLY, 0, 0, NULL);
-                char* data = static_cast<char*>(::MapViewOfFile(mapping, FILE_MAP_READ, 0, 0, size));
-
-                if (re2::RE2::PartialMatch(std::string(data, size), _regex))
-                {
-                    std::cout << fullFileName << std::endl;
-                    ++results;
-                }
-
-                ::CloseHandle(mapping);
-                ::CloseHandle(hfile);
-            }
-        }
-
-        ::FindClose(hfind);
+        std::cerr << "Invalid path!" << std::endl;
+        return;
     }
-    std::cout << "Results: " << results << std::endl;
+    
+    // Skip ".."
+    FindNextFileA(hfind, &ffd);
 
+
+    while (FindNextFileA(hfind, &ffd))
+    {
+        if (ffd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+        {
+            std::string fullName = searchDir + "\\" + std::string(ffd.cFileName);
+            tasks.run([&, fullName]{SearchInternal(fullName, tasks);});
+        }
+        else if (re2::RE2::FullMatch(ffd.cFileName, _fileRegex))
+        {
+            std::string fullName = searchDir + "\\" + std::string(ffd.cFileName);
+            files.push_back(fullName);
+        }
+    }
+
+    ::FindClose(hfind);
+
+    for (size_t i = 0; i < files.size(); ++i)
+    {
+        const std::string& fullFileName = files[i];
+        HANDLE hfile = ::CreateFileA(fullFileName.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OVERLAPPED, NULL);
+        if (hfile == INVALID_HANDLE_VALUE)
+        {
+            std::cerr << "Couldn't open file!" << std::endl;
+            continue;
+        }
+
+        DWORD size = ::GetFileSize(hfile, 0);
+
+        HANDLE mapping = ::CreateFileMappingA(hfile, NULL, PAGE_READONLY, 0, 0, NULL);
+        char* data = static_cast<char*>(::MapViewOfFile(mapping, FILE_MAP_READ, 0, 0, size));
+
+        if (re2::RE2::PartialMatch(std::string(data, size), _regex))
+        {
+            std::cout << fullFileName << std::endl;
+        }
+
+        ::CloseHandle(mapping);
+        ::CloseHandle(hfile);
+    }
 }
 
