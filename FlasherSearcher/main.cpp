@@ -14,13 +14,34 @@
 
 int test1();
 
-int main()
+int main (int argc, char *argv[])
 {
+    if (argc != 3)
+    {
+        std::cerr << "Expected usage: [FILE_FILTER] [QUERY]";
+        return -1;
+    }
+
+    const size_t BUFFER_SIZE = 512; 
+    char cwd_buffer[BUFFER_SIZE];
+    size_t cwdSize = ::GetCurrentDirectoryA(BUFFER_SIZE, cwd_buffer);
+    
+    std::string cwd(cwd_buffer, cwdSize);
+    std::string fileFilter = argv[1];
+    std::string query = argv[2];
+
+    std::cout << "CWD: " << cwd << std::endl;
+    std::cout << "Filter: " << fileFilter << std::endl;
+    std::cout << "Query: " << query << std::endl;
+    
     // return test1();
 
-    Searcher s("FOpaqueVelocityMeshProcessor", ".*\\.(cpp|c|h|hpp)$");
-    // s.Search("D:\\Repository\\godot", ".*\.(cpp|c|h|hpp)$");
-    s.Search("C:\\UE4\\UE_4.25\\Engine");
+    Searcher s(query, fileFilter);
+    s.Search(cwd);
+    
+    // Searcher s("http.*\.pdf", ".*\\.(cpp|c|h|hpp)$");
+    // // s.Search("D:\\Repository\\godot", ".*\.(cpp|c|h|hpp)$");
+    // s.Search("C:\\UE4\\UE_4.25\\Engine");
 
     return 0;
 }

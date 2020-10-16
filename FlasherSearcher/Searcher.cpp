@@ -30,7 +30,7 @@ void Searcher::SearchInternal(std::string searchDir, concurrency::task_group& ta
 
     WIN32_FIND_DATAA ffd;
     // Skip "." 
-    HANDLE hfind = FindFirstFileA(dirFilter.c_str(), &ffd);
+    HANDLE hfind = ::FindFirstFileA(dirFilter.c_str(), &ffd);
     if (hfind == INVALID_HANDLE_VALUE)
     {
         std::cerr << "Invalid path!" << std::endl;
@@ -38,10 +38,10 @@ void Searcher::SearchInternal(std::string searchDir, concurrency::task_group& ta
     }
     
     // Skip ".."
-    FindNextFileA(hfind, &ffd);
+    ::FindNextFileA(hfind, &ffd);
 
 
-    while (FindNextFileA(hfind, &ffd))
+    while (::FindNextFileA(hfind, &ffd))
     {
         if (ffd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
         {
