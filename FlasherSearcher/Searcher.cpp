@@ -74,26 +74,44 @@ void Searcher::SearchInternal(std::string searchDir, concurrency::task_group& ta
         HANDLE mapping = ::CreateFileMappingA(hfile, NULL, PAGE_READONLY, 0, 0, NULL);
         char* dataBuffer = static_cast<char*>(::MapViewOfFile(mapping, FILE_MAP_READ, 0, 0, size));
 
-        std::string data = std::string(dataBuffer, size);
+        re2::StringPiece data(dataBuffer, size);
         if (re2::RE2::PartialMatch(data, _regex))
         {
             // std::cout << fullFileName << std::endl;
 
-            std::istringstream iss(data);
-            std::istream_iterator<std::string> issItr(iss);
             unsigned int lineNumber = 1;
-            while (iss.getline(lineBuffer, 1024))
+            size_t lineBegin = 0;
+            size_t pos = 0;
+            while (true)
             {
-                int len = iss.gcount();
-                if (lineBuffer[len-2] == '\r' || lineBuffer[len-2] == '\n')
-                    len -= 2;
-
-                const re2::StringPiece sp(lineBuffer, len);
-                if (re2::RE2::PartialMatch(sp, _regex))
+                char c = data[pos];
+                if (c == '\r' || c == '\n')
                 {
-                    std::cout << fullFileName << ":" << lineNumber << ":" << sp << std::endl;
+                    // new line
+                    const size_t lineSize = pos - lineBegin;
+                    if (lineSize != 0)
+                    {
+                        re2::StringPiece line(dataBuffer + lineBegin, lineSize);
+                        if (re2::RE2::PartialMatch(line, _regex))
+                        {
+                            std::cout << fullFileName << ":" << lineNumber << ":" << line << std::endl;
+                        }
+                    }
+                    ++pos;
+                    c = data[pos];
+                    if (c == '\n')
+                        ++pos;
+                    
+                    lineBegin = pos;
+                    ++lineNumber;
                 }
-                ++lineNumber;
+                else
+                {
+                    ++pos;
+                }
+
+                if (pos == size)
+                    break;
             }
         }
 
