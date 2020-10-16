@@ -1,0 +1,5 @@
+[requires]
+re2/20201001
+
+[generators]
+visual_studio_multi
