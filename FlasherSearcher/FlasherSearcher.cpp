@@ -1,22 +1,32 @@
 // FlasherSearcher.cpp : This file contains the 'main' function. Program execution begins and ends there.
 //
 
-#include <iostream>
+#include "pch.h"
 
-// https://dfs-minded.com/build-integrate-re2-c-project-windows/
-#include <re2/re2.h>
+#include "Searcher.h"
 
-// https://www.flipcode.com/archives/Faster_File_Access_With_File_Mapping.shtml
-// http://imadiversion.co.uk/2016/12/08/c-17-and-memory-mapped-io/
-#include <windows.h>
+// Conan
+// https://docs.conan.io/en/latest/using_packages/workflows.html
+// https://docs.conan.io/en/latest/reference/generators/visualstudiomulti.html#visual-studio-multi
 
 // C++ prebuild target hooks (for debug)
 // https://docs.microsoft.com/en-us/visualstudio/msbuild/how-to-extend-the-visual-studio-build-process?view=vs-2015&redirectedfrom=MSDN
 
+int test1();
+
 int main()
 {
-    std::cout << "Hello World!\n";
+    // return test1();
 
+    Searcher s("FOpaqueVelocityMeshProcessor");
+    // s.Search("D:\\Repository\\godot", ".*\.(cpp|c|h|hpp)$");
+    s.Search("C:\\UE4\\UE_4.25\\Engine", ".*\.(cpp|c|h|hpp)$");
+
+    return 0;
+}
+
+int test1()
+{
     re2::RE2 re("test");
     if (!re.ok())
     {
@@ -47,16 +57,5 @@ int main()
     //bool r = re2::RE2::FullMatch(data, re);
     bool r = re2::RE2::PartialMatch(data, re);
     std::cout << "is match: " << r << std::endl;
-
 }
 
-// Run program: Ctrl + F5 or Debug > Start Without Debugging menu
-// Debug program: F5 or Debug > Start Debugging menu
-
-// Tips for Getting Started: 
-//   1. Use the Solution Explorer window to add/manage files
-//   2. Use the Team Explorer window to connect to source control
-//   3. Use the Output window to see build output and other messages
-//   4. Use the Error List window to view errors
-//   5. Go to Project > Add New Item to create new code files, or Project > Add Existing Item to add existing code files to the project
-//   6. In the future, to open this project again, go to File > Open > Project and select the .sln file
