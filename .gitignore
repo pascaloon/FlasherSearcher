@@ -338,3 +338,15 @@ ASALocalRun/
 
 # BeatPulse healthcheck temp database
 healthchecksdb
+
+# Ionide
+.ionide/
+
+# Conan
+conan.lock
+conanbuildinfo.txt
+conanbuildinfo_debug_x64_v142.props
+conanbuildinfo_multi.props
+conanbuildinfo_release_x64_v142.props
+conaninfo.txt
+graph_info.json
