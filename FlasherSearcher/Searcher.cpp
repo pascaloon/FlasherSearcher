@@ -61,6 +61,7 @@ void Searcher::SearchInternal(std::string searchDir, concurrency::task_group& ta
     
     for (size_t i = 0; i < files.size(); ++i)
     {
+        //    vvvvvvvvvvv copy! array resize would make it dangle
         const std::string fullFileName = files[i];
         HANDLE hfile = ::CreateFileA(fullFileName.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OVERLAPPED, NULL);
         if (hfile == INVALID_HANDLE_VALUE)
@@ -77,6 +78,7 @@ void Searcher::SearchInternal(std::string searchDir, concurrency::task_group& ta
         re2::StringPiece data(dataBuffer, size);
         if (re2::RE2::PartialMatch(data, _regex))
         {
+            std::lock_guard<std::mutex> lock(_outputMutex);
             // std::cout << fullFileName << std::endl;
 
             unsigned int lineNumber = 1;

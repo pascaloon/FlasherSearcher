@@ -14,4 +14,6 @@ private:
     
     re2::RE2 _regex;
     re2::RE2 _fileRegex;
+
+    std::mutex _outputMutex;
 };
