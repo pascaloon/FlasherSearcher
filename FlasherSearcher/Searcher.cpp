@@ -78,7 +78,12 @@ void Searcher::SearchInternal(std::string searchDir, concurrency::task_group& ta
         re2::StringPiece data(dataBuffer, size);
         if (re2::RE2::PartialMatch(data, _regex))
         {
-            std::lock_guard<std::mutex> lock(_outputMutex);
+            constexpr size_t EXPECTED_LINEMATCHES = 5;
+            std::vector<re2::StringPiece> lines;
+            lines.reserve(EXPECTED_LINEMATCHES);
+            std::vector<re2::StringPiece> matches;
+            matches.reserve(EXPECTED_LINEMATCHES);
+            
             // std::cout << fullFileName << std::endl;
 
             unsigned int lineNumber = 1;
@@ -97,27 +102,8 @@ void Searcher::SearchInternal(std::string searchDir, concurrency::task_group& ta
                         re2::StringPiece match;
                         if (re2::RE2::PartialMatch(line, _regex, &match))
                         {
-                            size_t pos = match.data() - line.begin();
-                            std::cout << pathForeground << fullFileName << ":" << lineNumber << ":";
-                            if (pos > 0)
-                            {
-                                re2::StringPiece matchPrefix(line.begin(), pos);
-                                std::cout << resetForeground << matchPrefix;
-                            }
-                            std::cout << matchForeground << match;
-                            if (match.end() != line.end())
-                            {
-                                re2::StringPiece matchSuffix(match.end(), line.end() - match.end());
-                                std::cout << resetForeground << matchSuffix;
-                            }
-                            else
-                            {
-                                std::cout << resetForeground;                                
-                            }
-                            std::cout << std::endl;
-
-
-                            // SetConsoleTextAttribute & WriteConsoleA don't work on Rider embedded terminal :(
+                            lines.push_back(line);
+                            matches.push_back(match);
                         }
                     }
                     ++pos;
@@ -135,6 +121,35 @@ void Searcher::SearchInternal(std::string searchDir, concurrency::task_group& ta
 
                 if (pos == size)
                     break;
+            }
+
+            std::lock_guard<std::mutex> lock(_outputMutex);
+            for (size_t i = 0; i < lines.size(); ++i)
+            {
+                const re2::StringPiece& line = lines[i];
+                const re2::StringPiece& match = matches[i];
+
+                size_t pos = match.data() - line.begin();
+                std::cout << pathForeground << fullFileName << ":" << lineNumber << ":";
+                if (pos > 0)
+                {
+                    re2::StringPiece matchPrefix(line.begin(), pos);
+                    std::cout << resetForeground << matchPrefix;
+                }
+                std::cout << matchForeground << match;
+                if (match.end() != line.end())
+                {
+                    re2::StringPiece matchSuffix(match.end(), line.end() - match.end());
+                    std::cout << resetForeground << matchSuffix;
+                }
+                else
+                {
+                    std::cout << resetForeground;                                
+                }
+                std::cout << std::endl;
+
+
+                // SetConsoleTextAttribute & WriteConsoleA don't work on Rider embedded terminal :(
             }
         }
 
