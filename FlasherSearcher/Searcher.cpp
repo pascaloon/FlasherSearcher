@@ -30,7 +30,16 @@ void Searcher::SearchInternal(std::string searchDir, concurrency::task_group& ta
     HANDLE hfind = ::FindFirstFileA(dirFilter.c_str(), &ffd);
     if (hfind == INVALID_HANDLE_VALUE)
     {
-        std::cerr << "Invalid path!" << std::endl;
+        DWORD errorId = GetLastError();
+        LPSTR messageBuffer = nullptr;
+        FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+                                     NULL, errorId, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, NULL);
+
+        {
+            std::lock_guard<std::mutex> lock(_outputMutex);
+            std::cerr << "Error occured for directory: '" << searchDir << "'. Error: " << messageBuffer << std::endl;
+        }
+        LocalFree(messageBuffer);
         return;
     }
     
@@ -61,8 +70,17 @@ void Searcher::SearchInternal(std::string searchDir, concurrency::task_group& ta
         HANDLE hfile = ::CreateFileA(fullFileName.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OVERLAPPED, NULL);
         if (hfile == INVALID_HANDLE_VALUE)
         {
-            std::cerr << "Couldn't open file!" << std::endl;
-            continue;
+            DWORD errorId = GetLastError();
+            LPSTR messageBuffer = nullptr;
+            FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+                                         NULL, errorId, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, NULL);
+
+            {
+                std::lock_guard<std::mutex> lock(_outputMutex);
+                std::cerr << "Error occured for file: '" << fullFileName << "'. Error: " << messageBuffer << std::endl;
+            }
+            LocalFree(messageBuffer);
+            continue;;
         }
 
         DWORD size = ::GetFileSize(hfile, 0);
