@@ -53,11 +53,6 @@ void Searcher::SearchInternal(std::string searchDir, concurrency::task_group& ta
     }
 
     ::FindClose(hfind);
-
-    // https://en.wikipedia.org/wiki/ANSI_escape_code
-    static const std::string pathForeground = "\033[1;90m";
-    static const std::string matchForeground = "\033[1;32m";
-    static const std::string resetForeground = "\033[0m";
     
     for (size_t i = 0; i < files.size(); ++i)
     {
@@ -123,6 +118,11 @@ void Searcher::SearchInternal(std::string searchDir, concurrency::task_group& ta
                     break;
             }
 
+            // https://en.wikipedia.org/wiki/ANSI_escape_code
+            static const std::string pathForeground = "\033[1;90m";
+            static const std::string matchForeground = "\033[1;32m";
+            static const std::string resetForeground = "\033[0m";
+            
             std::lock_guard<std::mutex> lock(_outputMutex);
             for (size_t i = 0; i < lines.size(); ++i)
             {
@@ -130,24 +130,43 @@ void Searcher::SearchInternal(std::string searchDir, concurrency::task_group& ta
                 const re2::StringPiece& match = matches[i];
 
                 size_t pos = match.data() - line.begin();
-                std::cout << pathForeground << fullFileName << ":" << lineNumber << ":";
-                if (pos > 0)
+    
+                if (_colored)
                 {
-                    re2::StringPiece matchPrefix(line.begin(), pos);
-                    std::cout << resetForeground << matchPrefix;
-                }
-                std::cout << matchForeground << match;
-                if (match.end() != line.end())
-                {
-                    re2::StringPiece matchSuffix(match.end(), line.end() - match.end());
-                    std::cout << resetForeground << matchSuffix;
+                    std::cout << pathForeground << fullFileName << ":" << lineNumber << ":";
+                    if (pos > 0)
+                    {
+                        re2::StringPiece matchPrefix(line.begin(), pos);
+                        std::cout << resetForeground << matchPrefix;
+                    }
+                    std::cout << matchForeground << match;
+                    if (match.end() != line.end())
+                    {
+                        re2::StringPiece matchSuffix(match.end(), line.end() - match.end());
+                        std::cout << resetForeground << matchSuffix;
+                    }
+                    else
+                    {
+                        std::cout << resetForeground;                                
+                    }
+                    std::cout << std::endl;
                 }
                 else
                 {
-                    std::cout << resetForeground;                                
+                    std::cout << fullFileName << ":" << lineNumber << ":";
+                    if (pos > 0)
+                    {
+                        re2::StringPiece matchPrefix(line.begin(), pos);
+                        std::cout << matchPrefix;
+                    }
+                    std::cout << match;
+                    if (match.end() != line.end())
+                    {
+                        re2::StringPiece matchSuffix(match.end(), line.end() - match.end());
+                        std::cout << matchSuffix;
+                    }
+                    std::cout << std::endl;
                 }
-                std::cout << std::endl;
-
 
                 // SetConsoleTextAttribute & WriteConsoleA don't work on Rider embedded terminal :(
             }

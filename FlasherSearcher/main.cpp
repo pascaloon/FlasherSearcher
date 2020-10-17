@@ -16,9 +16,9 @@ int test1();
 
 int main (int argc, char *argv[])
 {
-    if (argc != 3)
+    if (argc < 3 || argc > 4)
     {
-        std::cerr << "Expected usage: [FILE_FILTER] [QUERY]";
+        std::cerr << "Expected usage: FILE_FILTER QUERY [--no-color]";
         return -1;
     }
 
@@ -30,11 +30,19 @@ int main (int argc, char *argv[])
     std::string fileFilter = argv[1];
     std::string query = argv[2];
 
+    bool colored = true;
+    if (argc > 3)
+    {
+        std::cout << "argv[3]: \"" << argv[3] << "\"" << std::endl;
+        colored = std::strcmp(argv[3], "--no-color") != 0; // std::strcmp == 0 -> Equals
+    }
+
     // std::cout << "CWD: " << cwd << std::endl;
     // std::cout << "Filter: " << fileFilter << std::endl;
     // std::cout << "Query: " << query << std::endl;
     
     Searcher s(query, fileFilter);
+    s.SetColoredOutput(colored);
     s.Search(cwd);
 
     return 0;
