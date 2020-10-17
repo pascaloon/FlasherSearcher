@@ -3,8 +3,8 @@
 
 
 Searcher::Searcher(const std::string& regex, const std::string& fileFilter)
-    : _regex("(" + regex + ")")
-    , _fileRegex(fileFilter)
+    : _regex("(?i)(" + regex + ")")
+    , _fileRegex("(?i)" + fileFilter)
 {
 }
 
