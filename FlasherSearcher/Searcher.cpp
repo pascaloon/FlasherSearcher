@@ -2,13 +2,13 @@
 #include "Searcher.h"
 
 
-Searcher::Searcher(std::string regex, std::string fileFilter)
+Searcher::Searcher(const std::string& regex, const std::string& fileFilter)
     : _regex("(" + regex + ")")
     , _fileRegex(fileFilter)
 {
 }
 
-void Searcher::Search(std::string searchDir)
+void Searcher::Search(const std::string& searchDir)
 {
     concurrency::task_group tasks;
     

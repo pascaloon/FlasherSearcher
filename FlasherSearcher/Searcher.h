@@ -4,9 +4,9 @@
 class Searcher
 {
 public:
-    Searcher(std::string regex, std::string fileFilter);
+    Searcher(const std::string& regex, const std::string& fileFilter);
     
-    void Search(std::string searchDir);
+    void Search(const std::string& searchDir);
 
 private:
 
