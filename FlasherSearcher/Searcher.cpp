@@ -3,16 +3,15 @@
 
 
 Searcher::Searcher(std::string regex, std::string fileFilter)
-    : _regex(regex)
+    : _regex("(" + regex + ")")
     , _fileRegex(fileFilter)
 {
-    
 }
 
 void Searcher::Search(std::string searchDir)
 {
     concurrency::task_group tasks;
-
+    
     tasks.run([&]{SearchInternal(searchDir, tasks);});
 
     tasks.wait();
@@ -55,9 +54,10 @@ void Searcher::SearchInternal(std::string searchDir, concurrency::task_group& ta
 
     ::FindClose(hfind);
 
-    const size_t LINE_BUFFER_SIZE = 1024;
-    char lineBuffer[LINE_BUFFER_SIZE];
-
+    // https://en.wikipedia.org/wiki/ANSI_escape_code
+    static const std::string pathForeground = "\033[1;90m";
+    static const std::string matchForeground = "\033[1;32m";
+    static const std::string resetForeground = "\033[0m";
     
     for (size_t i = 0; i < files.size(); ++i)
     {
@@ -92,9 +92,30 @@ void Searcher::SearchInternal(std::string searchDir, concurrency::task_group& ta
                     if (lineSize != 0)
                     {
                         re2::StringPiece line(dataBuffer + lineBegin, lineSize);
-                        if (re2::RE2::PartialMatch(line, _regex))
+                        re2::StringPiece match;
+                        if (re2::RE2::PartialMatch(line, _regex, &match))
                         {
-                            std::cout << fullFileName << ":" << lineNumber << ":" << line << std::endl;
+                            size_t pos = match.data() - line.begin();
+                            std::cout << pathForeground << fullFileName << ":" << lineNumber << ":";
+                            if (pos > 0)
+                            {
+                                re2::StringPiece matchPrefix(line.begin(), pos);
+                                std::cout << resetForeground << matchPrefix;
+                            }
+                            std::cout << matchForeground << match;
+                            if (match.end() != line.end())
+                            {
+                                re2::StringPiece matchSuffix(match.end(), line.end() - match.end());
+                                std::cout << resetForeground << matchSuffix;
+                            }
+                            else
+                            {
+                                std::cout << resetForeground;                                
+                            }
+                            std::cout << std::endl;
+
+
+                            // SetConsoleTextAttribute & WriteConsoleA don't work on Rider embedded terminal :(
                         }
                     }
                     ++pos;
