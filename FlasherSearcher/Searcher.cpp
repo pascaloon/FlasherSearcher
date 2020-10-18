@@ -96,6 +96,8 @@ void Searcher::SearchInternal(std::string searchDir, concurrency::task_group& ta
             lines.reserve(EXPECTED_LINEMATCHES);
             std::vector<re2::StringPiece> matches;
             matches.reserve(EXPECTED_LINEMATCHES);
+            std::vector<int> lineNumbers;
+            lineNumbers.reserve(EXPECTED_LINEMATCHES);
             
             // std::cout << fullFileName << std::endl;
 
@@ -117,6 +119,7 @@ void Searcher::SearchInternal(std::string searchDir, concurrency::task_group& ta
                         {
                             lines.push_back(line);
                             matches.push_back(match);
+                            lineNumbers.push_back(lineNumber);
                         }
                     }
                     ++pos;
@@ -146,12 +149,13 @@ void Searcher::SearchInternal(std::string searchDir, concurrency::task_group& ta
             {
                 const re2::StringPiece& line = lines[i];
                 const re2::StringPiece& match = matches[i];
-
+                int clineNumber = lineNumbers[i];
+                
                 size_t pos = match.data() - line.begin();
     
                 if (_colored)
                 {
-                    std::cout << pathForeground << fullFileName << ":" << lineNumber << ":";
+                    std::cout << pathForeground << fullFileName << ":" << clineNumber << ":";
                     if (pos > 0)
                     {
                         re2::StringPiece matchPrefix(line.begin(), pos);
@@ -171,7 +175,7 @@ void Searcher::SearchInternal(std::string searchDir, concurrency::task_group& ta
                 }
                 else
                 {
-                    std::cout << fullFileName << ":" << lineNumber << ":";
+                    std::cout << fullFileName << ":" << clineNumber << ":";
                     if (pos > 0)
                     {
                         re2::StringPiece matchPrefix(line.begin(), pos);
