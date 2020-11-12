@@ -88,6 +88,8 @@ void Searcher::SearchInternal(std::string searchDir, concurrency::task_group& ta
         HANDLE mapping = ::CreateFileMappingA(hfile, NULL, PAGE_READONLY, 0, 0, NULL);
         char* dataBuffer = static_cast<char*>(::MapViewOfFile(mapping, FILE_MAP_READ, 0, 0, size));
 
+
+        
         re2::StringPiece data(dataBuffer, size);
         if (re2::RE2::PartialMatch(data, _regex))
         {
@@ -96,47 +98,54 @@ void Searcher::SearchInternal(std::string searchDir, concurrency::task_group& ta
             lines.reserve(EXPECTED_LINEMATCHES);
             std::vector<re2::StringPiece> matches;
             matches.reserve(EXPECTED_LINEMATCHES);
-            std::vector<int> lineNumbers;
+            std::vector<unsigned int> lineNumbers;
             lineNumbers.reserve(EXPECTED_LINEMATCHES);
             
             // std::cout << fullFileName << std::endl;
 
-            unsigned int lineNumber = 1;
-            size_t lineBegin = 0;
-            size_t pos = 0;
-            while (true)
+            re2::StringPiece data2(dataBuffer, size);
+            re2::StringPiece match;
+            while (re2::RE2::FindAndConsume(&data2, _regex, &match))
             {
-                char c = data[pos];
-                if (c == '\r' || c == '\n')
-                {
-                    // new line
-                    const size_t lineSize = pos - lineBegin;
-                    if (lineSize != 0)
-                    {
-                        re2::StringPiece line(dataBuffer + lineBegin, lineSize);
-                        re2::StringPiece match;
-                        if (re2::RE2::PartialMatch(line, _regex, &match))
-                        {
-                            lines.push_back(line);
-                            matches.push_back(match);
-                            lineNumbers.push_back(lineNumber);
-                        }
-                    }
-                    ++pos;
-                    c = data[pos];
-                    if (c == '\n')
-                        ++pos;
-                    
-                    lineBegin = pos;
-                    ++lineNumber;
-                }
-                else
-                {
-                    ++pos;
-                }
+                matches.push_back(match);
+            }
 
-                if (pos == size)
-                    break;
+            if (!matches.empty())
+            {
+                int matchId = 0;
+                const re2::StringPiece* cMatch = &matches[matchId];
+                const char* lineBegin = match.begin();
+                unsigned int lineNumber = 1;
+                int matchesPerLine = 0;
+                
+                for (const char* c = data.begin(); c < data.end(); ++c)
+                {
+                    if (cMatch && cMatch->begin() == c)
+                    {
+                        ++matchesPerLine;
+                        ++matchId;
+                        if (matchId != matches.size())
+                        {
+                            cMatch = &matches[matchId];
+                        }
+                            
+                    }
+                    if (*c == '\r' || *c == '\n')
+                    {
+                        for (int i = 0; i < matchesPerLine; ++i)
+                        {
+                            lines.push_back(re2::StringPiece(lineBegin, c - lineBegin));                            
+                            lineNumbers.push_back(lineNumber);                            
+                        }
+                        if (!cMatch)
+                            break;
+                        
+                        matchesPerLine = 0;
+                        ++lineNumber;
+                        if (c != data.end() && *c == '\n')
+                            ++c;
+                    }
+                }    
             }
 
             // https://en.wikipedia.org/wiki/ANSI_escape_code
