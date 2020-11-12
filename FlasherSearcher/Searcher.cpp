@@ -91,61 +91,59 @@ void Searcher::SearchInternal(std::string searchDir, concurrency::task_group& ta
 
         
         re2::StringPiece data(dataBuffer, size);
-        if (re2::RE2::PartialMatch(data, _regex))
+
+        constexpr size_t EXPECTED_LINEMATCHES = 8;
+
+        std::vector<re2::StringPiece> matches;
+        matches.reserve(EXPECTED_LINEMATCHES);
+
+        re2::StringPiece data2(dataBuffer, size);
+        re2::StringPiece match;
+        while (re2::RE2::FindAndConsume(&data2, _regex, &match))
         {
-            constexpr size_t EXPECTED_LINEMATCHES = 8;
+            matches.push_back(match);
+        }
+
+        if (!matches.empty())
+        {
             std::vector<re2::StringPiece> lines;
             lines.reserve(EXPECTED_LINEMATCHES);
-            std::vector<re2::StringPiece> matches;
-            matches.reserve(EXPECTED_LINEMATCHES);
             std::vector<unsigned int> lineNumbers;
             lineNumbers.reserve(EXPECTED_LINEMATCHES);
             
-            // std::cout << fullFileName << std::endl;
-
-            re2::StringPiece data2(dataBuffer, size);
-            re2::StringPiece match;
-            while (re2::RE2::FindAndConsume(&data2, _regex, &match))
+            int matchId = 0;
+            const re2::StringPiece* cMatch = &matches[matchId];
+            const char* lineBegin = match.begin();
+            unsigned int lineNumber = 1;
+            int matchesPerLine = 0;
+            
+            for (const char* c = data.begin(); c < data.end(); ++c)
             {
-                matches.push_back(match);
-            }
-
-            if (!matches.empty())
-            {
-                int matchId = 0;
-                const re2::StringPiece* cMatch = &matches[matchId];
-                const char* lineBegin = match.begin();
-                unsigned int lineNumber = 1;
-                int matchesPerLine = 0;
-                
-                for (const char* c = data.begin(); c < data.end(); ++c)
+                if (cMatch && cMatch->begin() == c)
                 {
-                    if (cMatch && cMatch->begin() == c)
+                    ++matchesPerLine;
+                    ++matchId;
+                    if (matchId != matches.size())
                     {
-                        ++matchesPerLine;
-                        ++matchId;
-                        if (matchId != matches.size())
-                        {
-                            cMatch = &matches[matchId];
-                        }
-                            
+                        cMatch = &matches[matchId];
                     }
-                    if (*c == '\r' || *c == '\n')
-                    {
-                        for (int i = 0; i < matchesPerLine; ++i)
-                        {
-                            lines.push_back(re2::StringPiece(lineBegin, c - lineBegin));                            
-                            lineNumbers.push_back(lineNumber);                            
-                        }
-                        if (!cMatch)
-                            break;
                         
-                        matchesPerLine = 0;
-                        ++lineNumber;
-                        if (c != data.end() && *c == '\n')
-                            ++c;
+                }
+                if (*c == '\r' || *c == '\n')
+                {
+                    for (int i = 0; i < matchesPerLine; ++i)
+                    {
+                        lines.push_back(re2::StringPiece(lineBegin, c - lineBegin));                            
+                        lineNumbers.push_back(lineNumber);                            
                     }
-                }    
+                    if (!cMatch)
+                        break;
+                    
+                    matchesPerLine = 0;
+                    ++lineNumber;
+                    if (c != data.end() && *c == '\n')
+                        ++c;
+                }
             }
 
             // https://en.wikipedia.org/wiki/ANSI_escape_code
@@ -161,7 +159,7 @@ void Searcher::SearchInternal(std::string searchDir, concurrency::task_group& ta
                 int clineNumber = lineNumbers[i];
                 
                 size_t pos = match.data() - line.begin();
-    
+
                 if (_colored)
                 {
                     std::cout << pathForeground << fullFileName << ":" << clineNumber << ":";
@@ -202,6 +200,7 @@ void Searcher::SearchInternal(std::string searchDir, concurrency::task_group& ta
                 // SetConsoleTextAttribute & WriteConsoleA don't work on Rider embedded terminal :(
             }
         }
+    
 
         ::CloseHandle(mapping);
         ::CloseHandle(hfile);
