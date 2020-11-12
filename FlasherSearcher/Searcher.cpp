@@ -140,9 +140,9 @@ void Searcher::SearchInternal(std::string searchDir, concurrency::task_group& ta
             }
 
             // https://en.wikipedia.org/wiki/ANSI_escape_code
-            static const std::string pathForeground = "\033[1;90m";
-            static const std::string matchForeground = "\033[1;32m";
-            static const std::string resetForeground = "\033[0m";
+            static constexpr char pathForeground[] = "\033[1;90m";
+            static constexpr char matchForeground[] = "\033[1;32m";
+            static constexpr char resetForeground[] = "\033[0m";
             
             std::lock_guard<std::mutex> lock(_outputMutex);
             for (size_t i = 0; i < lines.size(); ++i)
