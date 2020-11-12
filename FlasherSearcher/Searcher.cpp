@@ -20,7 +20,7 @@ void Searcher::Search(const std::string& searchDir)
 void Searcher::SearchInternal(std::string searchDir, concurrency::task_group& tasks)
 {
     std::vector<std::string> files;
-    files.reserve(15);
+    files.reserve(16);
     
     // std::cout << "Searching: " << searchDir << std::endl;
     std::string dirFilter = searchDir + "\\*";
@@ -93,7 +93,7 @@ void Searcher::SearchInternal(std::string searchDir, concurrency::task_group& ta
         re2::StringPiece data(dataBuffer, size);
         if (re2::RE2::PartialMatch(data, _regex))
         {
-            constexpr size_t EXPECTED_LINEMATCHES = 5;
+            constexpr size_t EXPECTED_LINEMATCHES = 8;
             std::vector<re2::StringPiece> lines;
             lines.reserve(EXPECTED_LINEMATCHES);
             std::vector<re2::StringPiece> matches;
