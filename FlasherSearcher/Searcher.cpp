@@ -143,6 +143,7 @@ void Searcher::SearchInternal(std::string searchDir, concurrency::task_group& ta
                     ++lineNumber;
                     if (c != data.end() && *c == '\n')
                         ++c;
+                    lineBegin = c; 
                 }
             }
 
