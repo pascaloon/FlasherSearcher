@@ -113,7 +113,7 @@ void Searcher::SearchInternal(std::string searchDir, concurrency::task_group& ta
             
             int matchId = 0;
             const re2::StringPiece* cMatch = &matches[matchId];
-            const char* lineBegin = match.begin();
+            const char* lineBegin = data.begin();
             unsigned int lineNumber = 1;
             int matchesPerLine = 0;
             
@@ -123,11 +123,9 @@ void Searcher::SearchInternal(std::string searchDir, concurrency::task_group& ta
                 {
                     ++matchesPerLine;
                     ++matchId;
-                    if (matchId != matches.size())
-                    {
-                        cMatch = &matches[matchId];
-                    }
-                        
+                    cMatch = matchId != matches.size()
+                        ? &matches[matchId]
+                        : nullptr;
                 }
                 if (*c == '\r' || *c == '\n')
                 {
@@ -136,15 +134,23 @@ void Searcher::SearchInternal(std::string searchDir, concurrency::task_group& ta
                         lines.push_back(re2::StringPiece(lineBegin, c - lineBegin));                            
                         lineNumbers.push_back(lineNumber);                            
                     }
+                    
+                    matchesPerLine = 0;
                     if (!cMatch)
                         break;
                     
-                    matchesPerLine = 0;
                     ++lineNumber;
-                    if (c != data.end() && *c == '\n')
+                    if (c != (data.end() - 1) && *(c + 1) == '\n')
                         ++c;
-                    lineBegin = c; 
+                    lineBegin = c + 1; 
                 }
+            }
+
+            // In case we reach EOF before an newline and we matched something on the very last line
+            for (int i = 0; i < matchesPerLine; ++i)
+            {
+                lines.push_back(re2::StringPiece(lineBegin, data.end() - lineBegin));                            
+                lineNumbers.push_back(lineNumber);                            
             }
 
             // https://en.wikipedia.org/wiki/ANSI_escape_code
